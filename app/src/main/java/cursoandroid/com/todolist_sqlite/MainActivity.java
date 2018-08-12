@@ -26,9 +26,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
 
@@ -43,8 +47,10 @@ public class MainActivity extends Activity {
     private ArrayList<Integer> idsTarefas;
 
     private String selectedDate;
+    private String actualDay;
     private DateFormat brDate;
-    private DateFormat date;
+    private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private DateFormat brDateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -92,9 +98,10 @@ public class MainActivity extends Activity {
             database.execSQL("CREATE TABLE IF NOT EXISTS tarefas(id INTEGER PRIMARY KEY AUTOINCREMENT, tarefa VARCHAR , concluida VARCHAR, dataParaConclusao DATE, repeticao VARCHAR)");
 
             //Gets the actual day
-            DateFormat brDateFormat = new SimpleDateFormat("dd/MM/yyyy");
-            DateFormat date = new SimpleDateFormat("yyyy-MM-dd");
-            selectedDate = date.format(new Date());
+
+            selectedDate = dateFormat.format(new Date());
+            actualDay = selectedDate;
+            brDateFormat.getTimeZone();
 
             //Sets the actual day in textview
             dayOfTasks.setText("Hoje");
@@ -106,8 +113,32 @@ public class MainActivity extends Activity {
                     String textoTarefa = textNewTask.getText().toString();
 
                     if( !textoTarefa.equals("")) {
-                        salvarTarefa(textoTarefa);
+                        saveTask(textoTarefa);
                         textNewTask.setText("");
+                    }
+                }
+            });
+
+            //Change day buttons
+            //advance
+            btAdvanceADay.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    try {
+                        changeDayOfTasks("plus");
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            //return
+            btReturnADay.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    try {
+                        changeDayOfTasks("minus");
+                    } catch (ParseException e) {
+                        e.printStackTrace();
                     }
                 }
             });
@@ -163,11 +194,11 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void salvarTarefa(String texto){
+    private void saveTask(String text){
         try{
-            if (!texto.equals("")) {
+            if (!text.equals("")) {
 
-                database.execSQL("INSERT INTO tarefas (tarefa, concluida, dataParaConclusao) VALUES ('" + texto + "', 'N', '" + selectedDate + "')");
+                database.execSQL("INSERT INTO tarefas (tarefa, concluida, dataParaConclusao) VALUES ('" + text + "', 'N', '" + selectedDate + "')");
                 Toast.makeText(this, "Tarefa salva com sucesso!", Toast.LENGTH_SHORT).show();
                 getAllTasksFromDate();
 
@@ -249,9 +280,26 @@ public class MainActivity extends Activity {
         }
     }
     
-    private  void advanceADay(){
-        
-        
-        
+    private  void changeDayOfTasks(String operation) throws ParseException {
+
+        Date nextDay = dateFormat.parse(selectedDate);
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(nextDay);
+
+        if (operation.equals("plus")){
+            calendar.add(Calendar.DATE, 1);
+        } else if (operation.equals("minus")){
+            calendar.add(Calendar.DATE, -1);
+        }
+
+        selectedDate = dateFormat.format(calendar.getTime());
+        getAllTasksFromDate();
+
+
+        if (actualDay.equals(selectedDate)){
+            dayOfTasks.setText("Hoje");
+        } else {
+            dayOfTasks.setText( brDateFormat.format(calendar.getTime()) );
+        }
     }
 }
