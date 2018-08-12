@@ -13,16 +13,19 @@ import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.ContextCompat;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StrikethroughSpan;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -44,14 +47,14 @@ public class MainActivity extends Activity {
     //Date fonts
     //https://www.youtube.com/watch?v=hwe1abDO2Ag
 
-    private EditText textNewTask;
+
     private ListView listTaskList;
     private SQLiteDatabase database;
     private TextView dayOfTasks;
-    private Button btAddTask;
     private Button btAdvanceADay;
     private Button btReturnADay;
     private DatePickerDialog.OnDateSetListener mDateSetListener;
+    private FloatingActionButton fabNewTaskButton;
 
     private ArrayList<Integer> idsTarefas;
 
@@ -62,7 +65,7 @@ public class MainActivity extends Activity {
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
@@ -102,12 +105,9 @@ public class MainActivity extends Activity {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         }
 
-
-
         try {
             //Activity components
-            textNewTask = findViewById(R.id.textoId);
-            btAddTask = findViewById(R.id.botaoAdicionarId);
+            fabNewTaskButton = findViewById(R.id.addNewTaskFAB);
             dayOfTasks = findViewById(R.id.textDayOfTasks);
             btAdvanceADay = findViewById(R.id.btAvancaDia);
             btReturnADay = findViewById(R.id.btRetornaDia);
@@ -125,19 +125,6 @@ public class MainActivity extends Activity {
 
             //Sets the actual day in textview
             dayOfTasks.setText("Hoje");
-
-            //Save task button
-            btAddTask.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    String textoTarefa = textNewTask.getText().toString();
-
-                    if( !textoTarefa.equals("")) {
-                        saveTask(textoTarefa);
-                        textNewTask.setText("");
-                    }
-                }
-            });
 
             //Change day buttons
             //advance
@@ -195,6 +182,48 @@ public class MainActivity extends Activity {
 
                     AlertDialog alertDialog = builder.create();
                     alertDialog.show();
+                }
+            });
+
+            //http://android.pcsalt.com/create-alertdialog-with-custom-layout-using-xml-layout/
+            //Fab button to initalize the fab
+            fabNewTaskButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    LayoutInflater inflater = getLayoutInflater();
+                    View alertLayout = inflater.inflate(R.layout.layout_newtask_dialog, null);
+                    final EditText newTaskName = alertLayout.findViewById(R.id.editNewTaskName);
+
+                    AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
+                    alert.setTitle("Digite a nova tarefa");
+
+                    // this is set the view from XML inside AlertDialog
+                    alert.setView(alertLayout);
+
+                    // disallow cancel of AlertDialog on click of back button and outside touch
+                    alert.setCancelable(false);
+                    alert.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    });
+
+                    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String taskText = newTaskName.getText().toString();
+
+                            if( !taskText.equals("")) {
+                                saveTask(taskText);
+                                newTaskName.setText("");
+                            }
+                        }
+                    });
+
+                    AlertDialog dialog = alert.create();
+                    dialog.show();
                 }
             });
 
@@ -269,7 +298,6 @@ public class MainActivity extends Activity {
             if (!text.equals("")) {
 
                 database.execSQL("INSERT INTO tarefas (tarefa, concluida, dataParaConclusao) VALUES ('" + text + "', 'N', '" + selectedDate + "')");
-                Toast.makeText(this, "Tarefa salva com sucesso!", Toast.LENGTH_SHORT).show();
                 getAllTasksFromDate();
 
             }  else {
@@ -333,7 +361,6 @@ public class MainActivity extends Activity {
         try{
 
             database.execSQL("DELETE FROM tarefas WHERE id = " + id);
-            Toast.makeText(MainActivity.this, "Tarefa removida com sucesso", Toast.LENGTH_SHORT).show();
             getAllTasksFromDate();
 
         } catch (Exception e){
