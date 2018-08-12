@@ -3,14 +3,17 @@ package cursoandroid.com.todolist_sqlite;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.support.v4.content.ContextCompat;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StrikethroughSpan;
@@ -20,6 +23,7 @@ import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
 
@@ -37,6 +41,9 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
 
+    //Date fonts
+    //https://www.youtube.com/watch?v=hwe1abDO2Ag
+
     private EditText textNewTask;
     private ListView listTaskList;
     private SQLiteDatabase database;
@@ -44,6 +51,7 @@ public class MainActivity extends Activity {
     private Button btAddTask;
     private Button btAdvanceADay;
     private Button btReturnADay;
+    private DatePickerDialog.OnDateSetListener mDateSetListener;
 
     private ArrayList<Integer> idsTarefas;
 
@@ -89,6 +97,13 @@ public class MainActivity extends Activity {
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
 
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(ContextCompat.getColor(MainActivity.this, R.color.blackgray));
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        }
+
+
+
         try {
             //Activity components
             textNewTask = findViewById(R.id.textoId);
@@ -104,7 +119,6 @@ public class MainActivity extends Activity {
             database.execSQL("CREATE TABLE IF NOT EXISTS tarefas(id INTEGER PRIMARY KEY AUTOINCREMENT, tarefa VARCHAR , concluida VARCHAR, dataParaConclusao DATE, repeticao VARCHAR)");
 
             //Gets the actual day
-
             selectedDate = dateFormat.format(new Date());
             actualDay = selectedDate;
             brDateFormat.getTimeZone();
@@ -183,6 +197,56 @@ public class MainActivity extends Activity {
                     alertDialog.show();
                 }
             });
+
+            //Textview onclick to change the day via android calendar
+            dayOfTasks.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Calendar cal = Calendar.getInstance();
+                    try {
+                        cal.setTime(dateFormat.parse(selectedDate));
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    int year = cal.get(Calendar.YEAR);
+                    int month = cal.get(Calendar.MONTH);
+                    int day = cal.get(Calendar.DAY_OF_MONTH);
+
+                    DatePickerDialog dialog = new DatePickerDialog(
+                            MainActivity.this,
+                            android.R.style.Theme_Holo_Dialog_MinWidth,
+                            mDateSetListener,
+                            year, month, day);
+                    dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                    dialog.show();
+                }
+            });
+
+            mDateSetListener = new DatePickerDialog.OnDateSetListener() {
+                @Override
+                public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                    try {
+
+                        month++;
+                        Date newDate = dateFormat.parse(year + "-" + month + "-" + dayOfMonth);
+
+                        Calendar calendar = Calendar.getInstance();
+                        calendar.setTime(newDate);
+
+                        selectedDate = dateFormat.format(calendar.getTime());
+                        getAllTasksFromDate();
+
+                        if (actualDay.equals(selectedDate)){
+                            dayOfTasks.setText("Hoje");
+                        } else {
+                            dayOfTasks.setText( brDateFormat.format(calendar.getTime()) );
+                        }
+
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
 
             //Gets all the tasks for the task list
             getAllTasksFromDate();
@@ -300,7 +364,6 @@ public class MainActivity extends Activity {
 
         selectedDate = dateFormat.format(calendar.getTime());
         getAllTasksFromDate();
-
 
         if (actualDay.equals(selectedDate)){
             dayOfTasks.setText("Hoje");
