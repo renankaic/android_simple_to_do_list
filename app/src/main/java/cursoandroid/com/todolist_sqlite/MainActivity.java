@@ -1,5 +1,6 @@
 package cursoandroid.com.todolist_sqlite;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -12,6 +13,7 @@ import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StrikethroughSpan;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -20,53 +22,99 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class MainActivity extends Activity {
 
-    private EditText textoNovaTarefa;
-    private ListView listaTarefas;
-    private SQLiteDatabase bancoDeDados;
+    private EditText textNewTask;
+    private ListView listTaskList;
+    private SQLiteDatabase database;
+    private TextView dayOfTasks;
+    private Button btAddTask;
+    private Button btAdvanceADay;
+    private Button btReturnADay;
 
     private ArrayList<Integer> idsTarefas;
 
+    private String selectedDate;
+    private DateFormat brDate;
+    private DateFormat date;
+
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
+        //https://stackoverflow.com/questions/6210895/listview-inside-scrollview-is-not-scrolling-on-android
+        ListView lv = findViewById(R.id.listViewId);
+        lv.setOnTouchListener(new ListView.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int action = event.getAction();
+                switch (action) {
+                    case MotionEvent.ACTION_DOWN:
+                        // Disallow ScrollView to intercept touch events.
+                        v.getParent().requestDisallowInterceptTouchEvent(true);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        // Allow ScrollView to intercept touch events.
+                        v.getParent().requestDisallowInterceptTouchEvent(false);
+                        break;
+                }
+
+                // Handle ListView touch events.
+                v.onTouchEvent(event);
+                return true;
+            }
+        });
+
         try {
+            //Activity components
+            textNewTask = findViewById(R.id.textoId);
+            btAddTask = findViewById(R.id.botaoAdicionarId);
+            dayOfTasks = findViewById(R.id.textDayOfTasks);
+            btAdvanceADay = findViewById(R.id.btAvancaDia);
+            btReturnADay = findViewById(R.id.btRetornaDia);
 
-            //Recupera componentes
-            textoNovaTarefa = findViewById(R.id.textoId);
-            Button botaoAdicionar = findViewById(R.id.botaoAdicionarId);
+            //Database
+            database = openOrCreateDatabase("app-myTasks", MODE_PRIVATE, null);
 
-            //banco de dados
-            bancoDeDados = openOrCreateDatabase("app-minhastarefas", MODE_PRIVATE, null);
+            //Creates the table
+            database.execSQL("CREATE TABLE IF NOT EXISTS tarefas(id INTEGER PRIMARY KEY AUTOINCREMENT, tarefa VARCHAR , concluida VARCHAR, dataParaConclusao DATE, repeticao VARCHAR)");
 
-            //criar as tabelas]
-            bancoDeDados.execSQL("CREATE TABLE IF NOT EXISTS tarefas(id INTEGER PRIMARY KEY AUTOINCREMENT, tarefa VARCHAR , concluida VARCHAR)");
+            //Gets the actual day
+            DateFormat brDateFormat = new SimpleDateFormat("dd/MM/yyyy");
+            DateFormat date = new SimpleDateFormat("yyyy-MM-dd");
+            selectedDate = date.format(new Date());
 
-            //Botao salvar
-            botaoAdicionar.setOnClickListener(new View.OnClickListener() {
+            //Sets the actual day in textview
+            dayOfTasks.setText("Hoje");
+
+            //Save task button
+            btAddTask.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    String textoTarefa = textoNovaTarefa.getText().toString();
+                    String textoTarefa = textNewTask.getText().toString();
 
                     if( !textoTarefa.equals("")) {
                         salvarTarefa(textoTarefa);
-                        textoNovaTarefa.setText("");
+                        textNewTask.setText("");
                     }
                 }
             });
 
-            //Criação da lista
-            listaTarefas = findViewById(R.id.listViewId);
-            listaTarefas.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            //List
+            listTaskList = findViewById(R.id.listViewId);
+            listTaskList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                     final int posicaoItem = position;
@@ -99,8 +147,8 @@ public class MainActivity extends Activity {
                 }
             });
 
-            //Lista as tarefas
-            recuperarTarefas();
+            //Gets all the tasks for the task list
+            getAllTasksFromDate();
 
         } catch (Exception e){
 
@@ -113,34 +161,31 @@ public class MainActivity extends Activity {
 
             e.printStackTrace();
         }
-
     }
 
     private void salvarTarefa(String texto){
-
         try{
             if (!texto.equals("")) {
 
-                bancoDeDados.execSQL("INSERT INTO tarefas (tarefa, concluida) VALUES ('" + texto + "', 'N')");
+                database.execSQL("INSERT INTO tarefas (tarefa, concluida, dataParaConclusao) VALUES ('" + texto + "', 'N', '" + selectedDate + "')");
                 Toast.makeText(this, "Tarefa salva com sucesso!", Toast.LENGTH_SHORT).show();
-                recuperarTarefas();
+                getAllTasksFromDate();
 
             }  else {
                 Toast.makeText(MainActivity.this, "Digite a descrição da tarefa antes de adicionar", Toast.LENGTH_SHORT).show();
             }
 
         } catch (Exception e){
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
-
     }
 
-    private void recuperarTarefas(){
+    private void getAllTasksFromDate(){
 
         try {
-
-            //Recuperar as tarefas
-            Cursor cursor = bancoDeDados.rawQuery("SELECT * FROM tarefas ORDER BY id DESC", null);
+            //Gets the tasks  
+            Cursor cursor = database.rawQuery("SELECT * FROM tarefas WHERE dataParaConclusao = '"+ selectedDate + "' ORDER BY id DESC",null);
 
             //recuperar ids das colunas
             int indiceColunaId = cursor.getColumnIndex("id");
@@ -157,16 +202,14 @@ public class MainActivity extends Activity {
             );
 
             idsTarefas = new ArrayList<>();
-            listaTarefas.setAdapter(itensAdaptador);
+            listTaskList.setAdapter(itensAdaptador);
 
-            //Lista as tarefas - quando usa o rawquery ele fica parado no ultimo registro
+            //List the tasks
             while (cursor.moveToNext()){
-
                 String tarefaBanco = cursor.getString(indiceColunaTarefa);
-
                 SpannableString textoTarefa = new SpannableString(tarefaBanco);
 
-                //Aqui vejo se a tarefa foi concluída
+                //Checks if the task has completed
                 if ( cursor.getString(indiceColunaConcluida).equals("s") )
                 {
                     textoTarefa.setSpan(new StrikethroughSpan(), 0, textoTarefa.length(), 0 );
@@ -175,11 +218,9 @@ public class MainActivity extends Activity {
 
                 itens.add(textoTarefa);
                 idsTarefas.add( Integer.parseInt( cursor.getString(indiceColunaId) ) );
-
             }
 
             cursor.close();
-
         } catch (Exception e){
 
             e.printStackTrace();
@@ -190,9 +231,9 @@ public class MainActivity extends Activity {
     private void removerTarefa(Integer id){
         try{
 
-            bancoDeDados.execSQL("DELETE FROM tarefas WHERE id = " + id);
+            database.execSQL("DELETE FROM tarefas WHERE id = " + id);
             Toast.makeText(MainActivity.this, "Tarefa removida com sucesso", Toast.LENGTH_SHORT).show();
-            recuperarTarefas();
+            getAllTasksFromDate();
 
         } catch (Exception e){
             e.printStackTrace();
@@ -201,10 +242,16 @@ public class MainActivity extends Activity {
 
     private void concluirTarefa(Integer id){
         try{
-            bancoDeDados.execSQL("UPDATE tarefas SET concluida = 's' WHERE id = " + id);
-            recuperarTarefas();
+            database.execSQL("UPDATE tarefas SET concluida = 's' WHERE id = " + id);
+            getAllTasksFromDate();
         } catch (Exception e){
             e.printStackTrace();
         }
+    }
+    
+    private  void advanceADay(){
+        
+        
+        
     }
 }
