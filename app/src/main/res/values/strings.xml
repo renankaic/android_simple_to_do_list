@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Minhas Tarefas</string>
+    <string name="botao_adicionar">Adicionar</string>
+    <string name="pergunta_tarefa">O que deseja fazer com esta tarefa?</string>
+    <string name="resposta_tarefa_concluir">Concluir</string>
+    <string name="resposta_tarefa_excluir">Excluir</string>
+</resources>
