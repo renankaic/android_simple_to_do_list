@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 
+import android.os.Build;
 import android.os.Bundle;
 
 import android.text.SpannableString;
@@ -48,9 +49,8 @@ public class MainActivity extends Activity {
 
     private String selectedDate;
     private String actualDay;
-    private DateFormat brDate;
     private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private DateFormat brDateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
+    private DateFormat brDateFormat = new SimpleDateFormat("E dd MMM yyyy", Locale.getDefault());
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -82,6 +82,12 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        }
 
         try {
             //Activity components
